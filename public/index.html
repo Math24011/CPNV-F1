@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CPNV F1 — Grand Prix</title>
+<style>
+:root{--red:#e10600;--bg:#080b11;--panel:#111722;--line:#263244;--muted:#9aa8bb}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#182235,#080b11 60%);color:#f4f7fb;font-family:Arial,Helvetica,sans-serif}
+button,input{font:inherit}button{cursor:pointer;border:0;border-radius:8px;padding:12px 18px;font-weight:800;background:var(--red);color:white}button:disabled{opacity:.4;cursor:not-allowed}
+input{background:#080d15;border:1px solid #344258;color:white;border-radius:8px;padding:12px;min-width:0}
+.wrap{max-width:1200px;margin:auto;padding:22px}.top{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:20px}.brand{font-size:25px;font-weight:1000;letter-spacing:1px}.brand span{color:var(--red)}.tag{color:var(--muted);font-size:12px;letter-spacing:2px}
+.panel{background:linear-gradient(145deg,#151e2b,#0e141e);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 15px 45px #0005}
+h1,h2,h3,p{margin-top:0}h1{font-size:clamp(28px,5vw,48px);margin-bottom:8px}h2{font-size:19px}.muted{color:var(--muted)}.red{color:#ff514b}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.hidden{display:none!important}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row input{flex:1}
+.code{font-size:24px;font-weight:1000;letter-spacing:5px;color:#fff;background:#080d15;border:1px dashed #59677a;padding:12px 18px;border-radius:9px;display:inline-block}
+.players{display:grid;gap:8px;margin:14px 0}.player{display:flex;justify-content:space-between;padding:10px 12px;background:#0b111a;border:1px solid #253246;border-radius:8px}
+.ok{color:#69e6a5;font-weight:bold}.wait{color:#ffcf70;font-weight:bold}
+#gameCanvas{width:100%;height:auto;display:block;background:#101923;border-radius:12px;border:1px solid #344258}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.metric{background:#080d15;border:1px solid #263244;border-radius:8px;padding:10px}.metric small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px}.metric b{font-size:20px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.key{border:1px solid #536176;background:#080d15;border-radius:5px;padding:4px 8px;font-weight:bold}
+.log{min-height:22px;color:#ffcf70;font-size:13px;margin-top:10px}.foot{font-size:12px;color:#8391a5;margin-top:18px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.hud{grid-template-columns:repeat(2,1fr)}.wrap{padding:12px}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><div><div class="brand"><span>CPNV</span> F1</div><div class="tag">MULTIPLAYER GRAND PRIX • RACING PROTOTYPE</div></div><div class="tag">SEASON 2026 • ONLINE LOBBY</div></header>
+<section id="lobby" class="grid">
+ <div class="panel">
+  <div class="tag red">RACE CONTROL</div><h1>Prêt pour le <span class="red">départ ?</span></h1>
+  <p class="muted">Rejoins le même lobby que tes amis. Le départ est lancé lorsque tous les pilotes sont prêts.</p>
+  <h2>Code du lobby</h2><div class="code">CPNV</div>
+  <div style="height:18px"></div><h2>Ton pseudo</h2>
+  <div class="row"><input id="nickname" maxlength="16" placeholder="Ex. Alex" autocomplete="nickname"><button id="joinBtn">REJOINDRE</button></div>
+  <div class="log" id="lobbyMsg">Connexion au serveur…</div>
+  <div class="foot">Un seul code pour cette partie : CPNV. Maximum conseillé : 8 pilotes.</div>
+ </div>
+ <div class="panel">
+  <div class="tag">PIT WALL</div><h2>Liste des pilotes <span class="muted" id="count">(0)</span></h2>
+  <div id="players" class="players"><div class="muted">En attente des pilotes…</div></div>
+  <div class="row"><button id="readyBtn" disabled>JE SUIS PRÊT</button><button id="leaveBtn" style="background:#39475b" disabled>QUITTER</button></div>
+  <p class="foot">Le bouton prêt peut être désactivé si tu dois encore choisir ton pseudo.</p>
+ </div>
+</section>
+<section id="race" class="hidden">
+ <div class="row" style="justify-content:space-between;margin:8px 0 12px"><div><div class="tag red">LIVE GRAND PRIX</div><h2 style="margin:4px 0">Circuit CPNV — 8 tours</h2></div><button id="backBtn" style="background:#39475b">RETOUR LOBBY</button></div>
+ <div class="panel">
+  <canvas id="gameCanvas" width="1000" height="620"></canvas>
+  <div class="hud">
+   <div class="metric"><small>VITESSE</small><b id="speed">0 km/h</b></div>
+   <div class="metric"><small>TOUR</small><b id="lap">1 / 8</b></div>
+   <div class="metric"><small>PNEUS</small><b id="tyres">SOFT · 100%</b></div>
+   <div class="metric"><small>MEILLEUR ARRÊT</small><b id="pitTime">—</b></div>
+  </div>
+  <div class="row" style="justify-content:space-between"><div class="muted" id="raceStatus">Course en cours</div><div class="muted" id="position">Position : —</div></div>
+  <div class="controls"><span class="key">↑ / W</span><span class="key">↓ / S</span><span class="key">← / A</span><span class="key">→ / D</span><span class="key">Q</span><span class="muted">radio / demander les stands</span><span class="key">E</span><span class="muted">arrêt parfait quand la jauge est verte</span></div>
+  <div class="log" id="raceMsg">Bonne course !</div>
+ </div>
+</section>
+<p class="foot">Prototype indépendant non affilié à Formula 1, FIA ou aux équipes. Les noms et marques officiels ne sont pas utilisés.</p>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(() => {
+ const $=id=>document.getElementById(id);
+ const socket=io();
+ let myId=null,joined=false,ready=false,racing=false,players=[],cars={},keys={},speed=0,angle=-Math.PI/2,x=500,y=130,lap=1,progress=0,lastX=500,lastY=130,tyre=100,tyreType='SOFT',pitRequested=false,pitMode=false,pitTimer=0,pitWindow=0,bestPit=null,raf=0,lastFrame=0;
+ const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
+ socket.on('connect',()=>{$('lobbyMsg').textContent='Serveur connecté. Entre ton pseudo pour rejoindre.'});
+ socket.on('connect_error',()=>{$('lobbyMsg').textContent='Serveur indisponible. Réessaie dans un instant.'});
+ socket.on('lobby',data=>{players=data.players||[];renderPlayers();});
+ socket.on('joined',d=>{myId=d.id;joined=true;$('lobbyMsg').textContent='Tu as rejoint le lobby CPNV.';$('readyBtn').disabled=false;$('leaveBtn').disabled=false;$('joinBtn').disabled=true;$('nickname').disabled=true;});
+ socket.on('joinError',m=>$('lobbyMsg').textContent=m);
+ socket.on('raceStart',d=>{racing=true;$('lobby').classList.add('hidden');$('race').classList.remove('hidden');$('raceStatus').textContent='FEU VERT — Bonne course !';initCars(d.players||players);startLoop();});
+ socket.on('positions',data=>{for(const p of data){if(p.id!==myId)cars[p.id]={...cars[p.id],...p};}});
+ socket.on('raceReset',()=>{racing=false;ready=false;cancelAnimationFrame(raf);$('race').classList.add('hidden');$('lobby').classList.remove('hidden');$('readyBtn').textContent='JE SUIS PRÊT';$('readyBtn').style.background='';$('lobbyMsg').textContent='La course est terminée ou a été réinitialisée. Vous pouvez vous préparer à nouveau.';});
+ $('joinBtn').onclick=()=>{const name=$('nickname').value.trim();if(!name)return $('lobbyMsg').textContent='Entre un pseudo avant de rejoindre.';socket.emit('joinLobby',{code:'CPNV',name});};
+ $('readyBtn').onclick=()=>{if(!joined)return;ready=!ready;socket.emit('ready',{ready});$('readyBtn').textContent=ready?'ANNULER PRÊT':'JE SUIS PRÊT';$('readyBtn').style.background=ready?'#178b58':'#e10600';};
+ $('leaveBtn').onclick=leave; $('backBtn').onclick=()=>{socket.emit('leaveRace');};
+ function leave(){socket.emit('leaveLobby');joined=false;ready=false;$('joinBtn').disabled=false;$('nickname').disabled=false;$('readyBtn').disabled=true;$('leaveBtn').disabled=true;$('readyBtn').textContent='JE SUIS PRÊT';$('readyBtn').style.background='';$('lobbyMsg').textContent='Tu as quitté le lobby.';}
+ function renderPlayers(){ $('count').textContent='('+players.length+')';$('players').innerHTML='';if(!players.length){$('players').innerHTML='<div class="muted">En attente des pilotes…</div>';return;}players.forEach(p=>{const d=document.createElement('div');d.className='player';const n=document.createElement('span');n.textContent=p.name+(p.id===myId?' (toi)':'');const s=document.createElement('span');s.className=p.ready?'ok':'wait';s.textContent=p.ready?'PRÊT':'EN ATTENTE';d.append(n,s);$('players').append(d);});}
+ function initCars(list){cars={};list.forEach((p,i)=>{cars[p.id]={id:p.id,name:p.name,x:500+Math.cos(i*1.2)*25,y:130+Math.sin(i*1.2)*25,angle:-Math.PI/2,color:['#e10600','#00a1e8','#f5c400','#35bd78','#b06cff','#ff7c28','#e85cae','#cbd5e1'][i%8],speed:0};});x=500;y=130;angle=-Math.PI/2;speed=0;lap=1;progress=0;tyre=100;pitRequested=false;pitMode=false;lastX=x;lastY=y;}
+ window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();keys[k]=true;if(!racing)return;if(k==='q'&&!pitRequested&&!pitMode){pitRequested=true;$('raceMsg').textContent='Radio : « Box, box ! » Demande de stand envoyée.';}if(k==='e'&&pitRequested&&!pitMode&&Math.abs(x-825)<105&&Math.abs(y-310)<75){pitMode=true;pitTimer=0;pitWindow=Math.random()*1.2+1.0;$('raceMsg').textContent='Arrêt en cours : appuie une deuxième fois sur E dans la zone verte !';}else if(k==='e'&&pitMode){if(Math.abs(pitTimer-pitWindow)<0.22){tyre=100;tyreType=tyreType==='SOFT'?'MEDIUM':'SOFT';bestPit=pitTimer;pitMode=false;pitRequested=false;speed=0;$('raceMsg').textContent='ARRÊT PARFAIT ! Pneus '+tyreType+' montés.';}else if(pitTimer>0.25){$('raceMsg').textContent='Trop tôt ou trop tard ! Attends le repère vert.';}}});
+ window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+ function drawTrack(){ctx.clearRect(0,0,1000,620);ctx.fillStyle='#14251f';ctx.fillRect(0,0,1000,620);
+ ctx.fillStyle='#555d66';ctx.beginPath();ctx.ellipse(500,310,355,220,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#14251f';ctx.beginPath();ctx.ellipse(500,310,245,110,0,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#f2f2f2';ctx.lineWidth=4;ctx.setLineDash([18,16]);ctx.beginPath();ctx.ellipse(500,310,300,165,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#e10600';ctx.fillRect(490,88,20,18);ctx.fillStyle='#fff';ctx.font='bold 13px Arial';ctx.fillText('START / FINISH',515,102);
+ ctx.fillStyle='#263b50';ctx.fillRect(790,275,145,70);ctx.fillStyle='#fff';ctx.fillText('PIT LANE',825,315);
+ ctx.fillStyle='#fff';ctx.font='12px Arial';ctx.fillText('CPNV GRAND PRIX',420,310);
+ }
+ function drawCar(cx,cy,a,color,isMe){ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.fillStyle='#090b10';ctx.fillRect(-12,-11,9,7);ctx.fillRect(5,-11,9,7);ctx.fillRect(-12,7,9,7);ctx.fillRect(5,7,9,7);ctx.fillStyle=color;ctx.fillRect(-18,-6,36,12);ctx.fillRect(-7,-12,15,24);ctx.fillStyle='#dbe7f2';ctx.fillRect(8,-3,8,6);ctx.fillStyle='#111';ctx.fillRect(-17,-3,5,6);ctx.restore();if(isMe){ctx.fillStyle='#fff';ctx.font='bold 12px Arial';ctx.fillText('TOI',cx-12,cy-19);}}
+ function update(dt){if(!racing)return;
+ if(pitMode){pitTimer+=dt;if(pitTimer>3.4){tyre=100;tyreType=tyreType==='SOFT'?'MEDIUM':'SOFT';pitMode=false;pitRequested=false;speed=0;$('raceMsg').textContent='Arrêt terminé. Un peu de temps perdu : vise la zone verte la prochaine fois.';}return;}
+ const accel=keys['arrowup']||keys['w']?1:0,brake=keys['arrowdown']||keys['s']?1:0,left=keys['arrowleft']||keys['a'],right=keys['arrowright']||keys['d'];
+ speed+=accel*240*dt;speed-=brake*390*dt;speed-=speed*0.6*dt;speed=Math.max(0,Math.min(310,speed));
+ const steer=(left?-1:0)+(right?1:0);angle+=steer*(0.9+speed/230)*dt*(speed>0?1:0);
+ x+=Math.cos(angle)*speed*0.22*dt;y+=Math.sin(angle)*speed*0.22*dt;
+ const dx=(x-500)/355,dy=(y-310)/220,rad=Math.sqrt(dx*dx+dy*dy);
+ if(rad>1.16){speed*=0.94; x=500+dx/rad*405;y=310+dy/rad*250;}
+ if(rad<0.66){speed*=0.96;}
+ tyre=Math.max(0,tyre-(speed/310)*0.22*dt);
+ const old=Math.atan2((lastY-310)/220,(lastX-500)/355),now=Math.atan2((y-310)/220,(x-500)/355);let delta=now-old;if(delta>Math.PI)delta-=Math.PI*2;if(delta< -Math.PI)delta+=Math.PI*2;
+ if(delta>0)progress+=delta/(Math.PI*2);if(progress>=1){progress-=1;lap++;if(lap>8){lap=8;$('raceStatus').textContent='DRAPEAU À DAMIER !';speed=0;}}
+ lastX=x;lastY=y;
+ if(pitRequested&&Math.abs(x-825)<100&&Math.abs(y-310)<65){speed=Math.min(speed,75);if(keys['e']){pitMode=true;pitTimer=0;pitWindow=1.4;}}
+ $('speed').textContent=Math.round(speed)+' km/h';$('lap').textContent=Math.min(lap,8)+' / 8';$('tyres').textContent=tyreType+' · '+Math.round(tyre)+'%';$('pitTime').textContent=bestPit?bestPit.toFixed(2)+' s':'—';
+ const me=cars[myId];if(me){me.x=x;me.y=y;me.angle=angle;me.speed=speed;}
+ socket.emit('position',{x,y,angle,speed,lap});
+ }
+ function render(){drawTrack();Object.values(cars).forEach(c=>{if(c.id!==myId)drawCar(c.x,c.y,c.angle,c.color,false);});drawCar(x,y,angle,cars[myId]?.color||'#e10600',true);
+ if(pitMode){ctx.fillStyle='#000b';ctx.fillRect(300,520,400,50);ctx.fillStyle='#fff';ctx.font='bold 18px Arial';ctx.fillText('ARRÊT AU STAND — APPUIE SUR E DANS LA ZONE VERTE',315,550);ctx.fillStyle='#555';ctx.fillRect(330,565,340,12);ctx.fillStyle='#37d67a';ctx.fillRect(330+pitWindow/3.4*340-18,560,36,22);}
+ }
+ function loop(t){const dt=Math.min((t-lastFrame)/1000||0,0.04);lastFrame=t;update(dt);render();raf=requestAnimationFrame(loop);}
+ function startLoop(){lastFrame=0;cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);}
+ })();
+</script></body></html>
